@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0b0f1a;
+  --card:#111827;
+  --card2:#161e2e;
+  --accent:#38bdf8;
+  --accent2:#818cf8;
+  --text:#e2e8f0;
+  --muted:#64748b;
+  --border:rgba(56,189,248,0.15);
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;
+}
+
+.app{
+  max-width:950px;
+  margin:auto;
+  padding:40px 20px;
+}
+
+h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:60px;
+  letter-spacing:3px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.search-bar{
+  display:flex;
+  gap:10px;
+  margin:30px 0;
+}
+
+.search-bar input{
+  flex:1;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:white;
+  font-size:16px;
+}
+
+.search-bar button{
+  padding:14px 25px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  cursor:pointer;
+  font-size:16px;
+}
+
+.error-box{
+  display:none;
+  background:#4b1d1d;
+  color:#ffb4b4;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+
+.weather-card{
+  background:var(--card);
+  border-radius:20px;
+  padding:30px;
+  border:1px solid var(--border);
+  display:none;
+}
+
+.city{
+  font-size:50px;
+  font-family:'Bebas Neue',sans-serif;
+}
+
+.temp{
+  font-size:80px;
+  color:var(--accent);
+}
+
+.desc{
+  font-size:22px;
+  margin-bottom:20px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:15px;
+}
+
+.box{
+  background:var(--card2);
+  padding:20px;
+  border-radius:12px;
+}
+
+.label{
+  color:var(--muted);
+  font-size:14px;
+}
+
+.value{
+  font-size:30px;
+  margin-top:8px;
+  font-family:'Bebas Neue',sans-serif;
+}
+
+#loading{
+  display:none;
+  text-align:center;
+  margin:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <h1>WEATHER DASHBOARD</h1>
+
+  <div class="search-bar">
+    <input
+      type="text"
+      id="cityInput"
+      placeholder="Enter city name"
+    >
+    <button onclick="handleSearch()">
+      Search
+    </button>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div id="loading">
+    Loading weather data...
+  </div>
+
+  <div class="weather-card" id="weatherCard"></div>
+
+</div>
+
+<script>
+
+/* ===================================
+   Weather Dashboard
+   Async JS + REST API
+=================================== */
+
+const API_BASE = "https://wttr.in";
+
+/* Fetch weather using async/await */
+async function fetchWeather(city){
+
+    const url =
+      `${API_BASE}/${encodeURIComponent(city)}?format=j1`;
+
+    const response = await fetch(url);
+
+    // Error handling
+    if(!response.ok){
+        throw new Error(
+          `HTTP ${response.status}`
+        );
+    }
+
+    // JSON parsing
+    const data = await response.json();
+
+    if(!data.current_condition.length){
+        throw new Error(
+          "City not found"
+        );
+    }
+
+    return data;
+}
+
+/* Parse nested JSON object */
+function parseWeatherData(data, city){
+
+    const current =
+      data.current_condition[0];
+
+    const area =
+      data.nearest_area[0];
+
+    return{
+        city:
+          area.areaName[0].value || city,
+
+        country:
+          area.country[0].value,
+
+        temperature:
+          current.temp_C,
+
+        humidity:
+          current.humidity,
+
+        wind:
+          current.windspeedKmph,
+
+        description:
+          current.weatherDesc[0].value,
+
+        feelsLike:
+          current.FeelsLikeC,
+
+        pressure:
+          current.pressure,
+
+        visibility:
+          current.visibility
+    };
+}
+
+/* Render weather dynamically */
+function renderWeather(weather){
+
+    const card =
+      document.getElementById("weatherCard");
+
+    card.innerHTML = `
+
+      <div class="city">
+        ${weather.city},
+        ${weather.country}
+      </div>
+
+      <div class="temp">
+        ${weather.temperature}°C
+      </div>
+
+      <div class="desc">
+        ${weather.description}
+      </div>
+
+      <div class="grid">
+
+        <div class="box">
+          <div class="label">
+            Humidity
+          </div>
+          <div class="value">
+            ${weather.humidity}%
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">
+            Wind Speed
+          </div>
+          <div class="value">
+            ${weather.wind} km/h
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">
+            Feels Like
+          </div>
+          <div class="value">
+            ${weather.feelsLike}°C
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">
+            Pressure
+          </div>
+          <div class="value">
+            ${weather.pressure}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">
+            Visibility
+          </div>
+          <div class="value">
+            ${weather.visibility} km
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    card.style.display = "block";
+}
+
+/* Main search handler */
+async function handleSearch(){
+
+    const city =
+      document
+      .getElementById("cityInput")
+      .value
+      .trim();
+
+    const errorBox =
+      document.getElementById("errorBox");
+
+    const loading =
+      document.getElementById("loading");
+
+    if(!city){
+        alert("Enter city name");
+        return;
+    }
+
+    errorBox.style.display = "none";
+    loading.style.display = "block";
+
+    try{
+
+        // Fetch data
+        const raw =
+          await fetchWeather(city);
+
+        // Parse nested JSON
+        const weather =
+          parseWeatherData(raw, city);
+
+        // Render output
+        renderWeather(weather);
+
+    }
+    catch(error){
+
+        errorBox.style.display = "block";
+        errorBox.innerText =
+          "Error: " + error.message;
+    }
+    finally{
+
+        loading.style.display = "none";
+    }
+}
+
+/* Enter key support */
+document
+.getElementById("cityInput")
+.addEventListener("keydown",function(e){
+
+    if(e.key==="Enter"){
+        handleSearch();
+    }
+});
+
+</script>
+
+</body>
+</html>
